@@ -388,62 +388,91 @@ def RateplayerUpdate(new_value,old_value):
 
     ((8032, 2499721, 1610), (0.8974358974358975, 0.56, 1.0, 0.16666666666666666, 2, 0)), (0, 90, 90)
     """
-    print("new",new_value)
-    print("old",old_value)
+    # print(new_value)
+    # print(old_value)
     try:
         team_id=new_value[0][0][0][2]
         match_id=new_value[0][0][0][1]
         player_id=new_value[0][0][0][0]
-        time_spent=new_value[0][0][-1][-1]
+
+        time_spent=new_value[0][1][2]
+
         pass_accuracy=new_value[0][0][1][0]
         deul_effeciency=new_value[0][0][1][1]
         fk_effectiveness=new_value[0][0][1][2]
         shots_target=new_value[0][0][1][3]
         fouls=new_value[0][0][1][4]
         own_goal=new_value[0][0][1][5]
+
         goal=new_value[0][0][1][-1]
-        if (old is None):
-            old=0.5
-        temp_value=pass_accuracy+deul_effeciency+shots_target+fk_effectiveness
-        player_contribution=(temp_value)/4
-        temp_1=(0.005*fouls + 0.05*own_goal)
-        player_contribution-=(temp_1*player_contribution)
-        sum_of_contribution=(player_contribution+old)
-        player_contribution=sum_of_contribution/2
-        if (time_spent==90):
-            updated_contribution=1.05*player_contribution
-            return (updated_contribution,(old-updated_contribution),team_id)
+
+        #return (player_id)
+        if (old_value is None):
+            Old_Rating=0.5
         else:
-            return (((time_spent/90)*player_contribution),(old-(time_spent/90)*player_contribution),team_id)
+            Old_Rating = old_value[1]
+            #print(Old_Rating)
+        #print(Old_Rating)
+        print("###########################################")
+        temp_value=pass_accuracy+deul_effeciency+shots_target+fk_effectiveness
+        
+        #print(temp_value)
+        #print("###########################################")
+        player_contribution=float(temp_value)/float(4)
+        #print(player_contribution)
+        #print("###########################################")
+        
+        if(time_spent == 90):
+            player_contribution = float(player_contribution) * 1.05
+        else:
+            player_contribution = float(player_contribution) * float(time_spent)/float(90)
+
+        #print(time_spent)
+        #print("###########################################")
+        Performance = player_contribution - ((0.005 * fouls) * player_contribution)
+        Performance = player_contribution - ((0.05 * own_goal) * player_contribution)
+
+        #print(Performance)
+        #print("###########################################")
+        New_Rating = float(Performance + Old_Rating) / float(2)
+
+        Change_in_Rating = New_Rating - Old_Rating
+        return (player_id, New_Rating , Change_in_Rating, team_id)
+
     except:
         return old_value
 
 def profileplayerUpdate(new_value,old_value):
     try:
+        #print(new_value)
+        #print(old_value)
+        
         if(old_value is None):
-            new_value=[new_value]
-            fouls = new_value[0][0][1][-3]
-            goals = new_value[0][0][1][-1]
-            owng = new_value[0][0][1][-2]
-            pass_accuracy = new_value[0][0][1][0]
-            shotstar = new_value[0][0][1][-3]
+            player_Id = new_value[0][0][0]
+            #new_value=[new_value]
+            fouls = new_value[0][1][4]
+            goals = new_value[0][1][6]
+            own_goals = new_value[0][1][5]
+            pass_accuracy = new_value[0][1][0]
+            shots_target = new_value[0][1][3]
         else:
-            new_value=[new_value]
-            old_value=[old_value]
-            print("new------------",new_value[0][0][1])
-            print("new------------",old_value[0])
-            new_fouls=new[0][0][1][-2] + old_value[0][0]
-            new_goals=new[0][0][1][-1] + old_value[0][1]
-            new_owng=new[0][0][1][-2] + old_value[0][2]
-            new_pass_accuracy=new[0][0][1][0] + old_value[0][3] 
-            new_shotstar= new[0][0][1][-3] + old_value[0][4]
+            #new_value=[new_value]
+            #old_value=[old_value]
+            #print("new------------",new_value[0][0][1])
+            #print("new------------",old_value[0])
+            player_Id = new_value[0][0][0]
+            new_fouls=new_value[0][1][4] + old_value[0][0]
+            new_goals=new_value[0][1][6] + old_value[0][1]
+            new_own_goals=new_value[0][1][5] + old_value[0][2]
+            new_pass_accuracy=new_value[0][1][0] + old_value[0][3] 
+            new_shots_target= new_value[0][1][3] + old_value[0][4]
             fouls = new_fouls
             goals = new_goals
-            owng = new_owng
+            own_goals = new_own_goals
             pass_accuracy =new_pass_accuracy
-            shotstar = new_shotstar
-        result=(fouls,goals,owng, pass_accuracy, shotstar)
-        return result
+            shots_target = new_shots_target
+        
+        return (player_Id,fouls,goals,own_goals, pass_accuracy, shots_target)
     except:
         return old_value    
 
@@ -461,19 +490,19 @@ lines = ssc.socketTextStream("localhost", 6100)
 ### Match
 print("########################################################Filter By Match##########################################")
 match_data = lines.filter(filter_by_Match)
-#match.pprint()
+#match_data.pprint()
 ### Events
 print("########################################################Filter By Event##########################################")
 event_data = lines.filter(filter_by_Event)
-#event.pprint()
+#event_data.pprint()
 print("########################################################Calculate Events#########################################")
 event_characteristics = event_data.map(calculate_Events)
 #event_characteristics.pprint()
 print("########################################################Cummulative Metrics##########################################")
 metrics = event_characteristics.updateStateByKey(cummulate_Metrics)
 #metrics.pprint(30)
-final_metrics = metrics.updateStateByKey(calculate_Metrics)
 print("########################################################FINAL METRICS##########################################")
+final_metrics = metrics.updateStateByKey(calculate_Metrics)
 #final_metrics.pprint()
 player_details=match_data.flatMap(lambda y: player_list(y))
 #player_details.pprint()
@@ -481,15 +510,20 @@ print("########################################################PLAYER DETAILS###
 player_D=final_metrics.join(player_details)
 #player_D.pprint()
 player_rate=player_D.updateStateByKey(RateplayerUpdate)
-player_rate.pprint()
+#player_rate.pprint()
 print("########################################################PLAYER Profile Update##########################################")
 playerprofile=final_metrics.updateStateByKey(profileplayerUpdate)
 playerprofile.pprint()
+##playerprofile.pprint()
 print("########################################################FLUSH DATA OF VARIABLES##########################################")
 metrics = metrics.updateStateByKey(lambda x: None)
 final_metrics = final_metrics.updateStateByKey(lambda x: None)
 
+playerprofile.pprint()
+player_rate.pprint()
+
 ##SPARK##
 ssc.start()
-ssc.awaitTermination(100)   
+print("###############################AFTER STREAMING#################################")
+ssc.awaitTermination(10)  
 ssc.stop()
