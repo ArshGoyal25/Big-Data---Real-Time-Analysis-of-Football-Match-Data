@@ -87,7 +87,95 @@ cluster_4=transformed.filter(transformed.prediction==3).select("a")
 cluster_5=transformed.filter(transformed.prediction==4).select("a")
 
 cluster_1=cluster_1.filter(cluster_1.a==transformed.a)
+cluster_1=cluster_1.join(player_count,cluster_1.a==player_count.a)
+cluster_1.show()
 
+cluster_2=cluster_2.filter(cluster_2.a==transformed.a)
+cluster_2=cluster_2.join(player_count,cluster_2.a==player_count.a)
+
+cluster_3=cluster_3.filter(cluster_3.a==transformed.a)
+cluster_3=cluster_3.join(player_count,cluster_3.a==player_count.a)
+
+cluster_4=cluster_4.filter(cluster_4.a==transformed.a)
+cluster_4=cluster_4.join(player_count,cluster_4.a==player_count.a)
+
+cluster_5=cluster_5.filter(cluster_5.a==transformed.a)
+cluster_5=cluster_5.join(player_count,cluster_5.a==player_count.a)
+
+final_values=[]
+
+unique_players_1=[]
+for i in cluster_1.collect():
+	unique_players_1.append(str(int(i.a)))
+average_cluster_1=0
+for i in unique_players_1:
+	for j in unique_players_1:
+		if(i!=j):
+			try:
+				average_cluster_1+=float(chemistry[str(j+" "+i)])
+			except:
+				average_cluster_1+=float(chemistry[str(i+" "+j)])
+final_values.append(average_cluster_1/len(cluster_1.collect()))
+
+
+
+unique_players_2=[]
+for i in cluster_2.collect():
+	unique_players_1.append(str(int(i.a)))
+average_cluster_2=0
+for i in unique_players_2:
+	for j in unique_players_2:
+		if(i!=j):
+			try:
+				average_cluster_2+=float(chemistry[str(j+" "+i)])
+			except:
+				average_cluster_2+=float(chemistry[str(i+" "+j)])
+final_values.append(average_cluster_2/len(cluster_2.collect()))
+
+
+unique_players_3=[]
+for i in cluster_3.collect():
+	unique_players_3.append(str(int(i.a)))
+average_cluster_3=0
+for i in unique_players_3:
+	for j in unique_players_3:
+		if(i!=j):
+			try:
+				average_cluster_3+=float(chemistry[str(j+" "+i)])
+			except:
+				average_cluster_3+=float(chemistry[str(i+" "+j)])
+final_values.append(average_cluster_3/len(cluster_3.collect()))
+
+
+unique_players_4=[]
+for i in cluster_4.collect():
+	unique_players_4.append(str(int(i.a)))
+average_cluster_4=0
+for i in unique_players_4:
+	for j in unique_players_4:
+		if(i!=j):
+			try:
+				average_cluster_4+=float(chemistry[str(j+" "+i)])
+			except:
+				average_cluster_4+=float(chemistry[str(i+" "+j)])
+final_values.append(average_cluster_4/len(cluster_4.collect()))
+
+
+unique_players_5=[]
+for i in cluster_5.collect():
+	unique_players_5.append(str(int(i.a)))
+average_cluster_5=0
+for i in unique_players_5:
+	for j in unique_players_5:
+		if(i!=j):
+			try:
+				average_cluster_5+=float(chemistry[str(j+" "+i)])
+			except:
+				average_cluster_5+=float(chemistry[str(i+" "+j)])
+final_values.append(average_cluster_5/len(cluster_5.collect()))
+
+
+print(final_values)
 
 #for i in cluster_1.collect():
 
