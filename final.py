@@ -1,13 +1,13 @@
+#BD_0133_0254_0406_2029
+
 import json
-from pyspark import SparkConf, SparkContext 
-from pyspark.streaming import StreamingContext
-from pyspark.sql.functions import lit
-from pyspark.sql import SQLContext
 import sys
 from datetime import datetime
-#import sqlContext.implicits._
 
-
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import SQLContext
+from pyspark.sql.functions import lit
+from pyspark.streaming import StreamingContext
 
 '''
 {"status": "Played", "roundId": 4405654, "gameweek": 2, "teamsData": 
@@ -75,11 +75,9 @@ from datetime import datetime
           {"refereeId": 385909, "role": "fourthOfficial"}], 
           "duration": "Regular", "competitionId": 364}
 '''
-
 ##########################################################################################################################################
-
+#Returns True if rdd is Match
 def filter_by_Match(rdd):
-
     record_file  = json.loads(rdd)
     a=True
     b=False
@@ -90,29 +88,27 @@ def filter_by_Match(rdd):
     except:
         return b
 ##########################################################################################################################################
+#Returns True if rdd is Event
 def filter_by_Event(rdd):
-
     record_file = json.loads(rdd)
     a=True
     b=False
     try:
         temp = record_file["eventId"]
         return a
-
     except:
         return b
 ##########################################################################################################################################
-'''
-{"eventId": 8, "subEventName": "Simple pass", 
-    "tags": 
-        [{"id": 1801}], "playerId": 8325, 
-            "positions": [{"y": 53, "x": 49}, {"y": 51, "x": 36}], 
-            "matchId": 2499720, "eventName": "Pass", "teamId": 1625, "matchPeriod": "1H", 
-            "eventSec": 3.3586760000000027, "subEventId": 85, "id": 178147292}
-'''
-##########################################################################################################################################
-
+#Calculates event characteristics for each player
 def calculate_Events(rdd):
+    '''
+    {"eventId": 8, "subEventName": "Simple pass", 
+        "tags": 
+            [{"id": 1801}], "playerId": 8325, 
+                "positions": [{"y": 53, "x": 49}, {"y": 51, "x": 36}], 
+                "matchId": 2499720, "eventName": "Pass", "teamId": 1625, "matchPeriod": "1H", 
+                "eventSec": 3.3586760000000027, "subEventId": 85, "id": 178147292}
+    '''
     record = json.loads(rdd)
     player_Id = record["playerId"]
     match_Id = record["matchId"]
@@ -187,15 +183,10 @@ def calculate_Events(rdd):
 
     return (player_Id, ((player_Id, match_Id, team_Id), (acc_pass, in_acc_pass, key_acc_pass, key_inacc_pass), (dual_lost ,dual_won, dual_nuetral) ,
              (fk_acc, fk_unacc, penalty), (on_target, not_on_target, goal), (fouls) , (own_goal) ))
-
-    #return (player_Id, (player_Id, match_Id, team_Id) , (acc_pass, in_acc_pass, key_acc_pass, key_inacc_pass, dual_lost ,dual_won, dual_nuetral
-    #        , fk_acc, fk_unacc, penalty , on_target, not_on_target, goal ,fouls , own_goal))
-
 ##########################################################################################################################################
-
-# (8285, ((8285, 2499728, 1627), (1, 0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0), 0, 0))
-
+#Cumulates the event characters with Key: playerId
 def cummulate_Metrics(new, old):
+    # (8285, ((8285, 2499728, 1627), (1, 0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0), 0, 0))
     acc_pass=0
     in_acc_pass=0
     key_acc_pass=0
@@ -220,8 +211,6 @@ def cummulate_Metrics(new, old):
     player_Id = 0
     match_Id = 0
     team_Id = 0
-    #print(new)
-    #print("##############################################")
     
     for metric in new:
         player_Id = metric[0][0]
@@ -269,12 +258,11 @@ def cummulate_Metrics(new, old):
     
         return ( ((player_Id , match_Id, team_Id), (acc_pass, in_acc_pass, key_acc_pass, key_inacc_pass), (dual_lost ,dual_won, dual_nuetral) ,
             (fk_acc, fk_unacc, penalty), (on_target, not_on_target, goal), (fouls) , (own_goal) ))
-
+##########################################################################################################################################
+#Calculates the 6 metrics for each player
 def calculate_Metrics(new,old):
     metric = new[0]
-    #print(metric)
-    #print("################################################")
-    
+   
     player_Id = metric[0][0]
     match_Id = metric[0][1]
     team_Id = metric[0][2]
@@ -311,9 +299,9 @@ def calculate_Metrics(new,old):
     except: 
         shots_target = 0.0
     
-    #return ((0,0,0))
-    return ((player_Id , match_Id, team_Id) , (pass_accuracy, deul_effeciency, fk_effectiveness, shots_target, fouls, own_goal,goal)  )
-
+    return ((player_Id , match_Id, team_Id) , (pass_accuracy, deul_effeciency, fk_effectiveness, shots_target, fouls, own_goal,goal))
+##########################################################################################################################################
+#Calulates the time each player was on the field
 def player_list(rdd):
     player_json_data=json.loads(rdd)
     group_teams_data=player_json_data['teamsData']
@@ -346,7 +334,8 @@ def player_list(rdd):
             except:
                 final_data.append((j,(-1,-1,-1,j)))
     return final_data
-
+##########################################################################################################################################
+#Updates the rating of each player based on match performance
 def RateplayerUpdate(new_value,old_value):
     """
     (8032,(((8032, 2499721, 1610), (0.8974358974358975, 0.56, 1.0, 0.16666666666666666, 2, 0,goal)), (0, 90, 90)))
@@ -357,8 +346,7 @@ def RateplayerUpdate(new_value,old_value):
 
     ((8032, 2499721, 1610), (0.8974358974358975, 0.56, 1.0, 0.16666666666666666, 2, 0)), (0, 90, 90)
     """
-    #print(new_value)
-    #print(old_value)
+
     try:
         team_id=new_value[0][0][0][2]
         match_id=new_value[0][0][0][1]
@@ -380,9 +368,6 @@ def RateplayerUpdate(new_value,old_value):
             Old_Rating=0.5
         else:
             Old_Rating = old_value[1]
-            #print(Old_Rating)
-        #print(Old_Rating)
-        #print("###########################################")
         temp_value=pass_accuracy+deul_effeciency+shots_target+fk_effectiveness
         
         #print(temp_value)
@@ -400,6 +385,7 @@ def RateplayerUpdate(new_value,old_value):
         #print("###########################################")
         Performance = player_contribution - ((0.005 * fouls) * player_contribution)
         Performance = player_contribution - ((0.05 * own_goal) * player_contribution)
+        #print("###########################################")
 
         #print(Performance)
         #print("###########################################")
@@ -410,25 +396,20 @@ def RateplayerUpdate(new_value,old_value):
 
     except:
         return old_value
-
+##########################################################################################################################################
+#Updates the rating of each player based on match performance
 def profileplayerUpdate(new_value,old_value):
     try:
         #print(new_value)
-        #print(old_value)
-        
+        #print(old_value) 
         if(old_value is None):
             player_Id = new_value[0][0][0]
-            #new_value=[new_value]
             fouls = new_value[0][1][4]
             goals = new_value[0][1][6]
             own_goals = new_value[0][1][5]
             pass_accuracy = new_value[0][1][0]
             shots_target = new_value[0][1][3]
         else:
-            #new_value=[new_value]
-            #old_value=[old_value]
-            #print("new------------",new_value[0][0][1])
-            #print("new------------",old_value[0])
             player_Id = new_value[0][0][0]
             new_fouls=new_value[0][1][4] + old_value[0][1]
             new_goals=new_value[0][1][6] + old_value[0][2]
@@ -444,8 +425,8 @@ def profileplayerUpdate(new_value,old_value):
         return (player_Id,fouls,goals,own_goals, pass_accuracy ,shots_target)
     except:
         return old_value    
-
 ##########################################################################################################################################
+#Calculates the chemistry between a set of players
 def chem_calculate(rdd):
     dictionary_val=rdd.collect()
     #print(dictionary_val)
@@ -455,35 +436,29 @@ def chem_calculate(rdd):
             if(i!=j and i[1][0]!=0 and j[1][0]!=0):
                 new_rating=i[1][1]
                 Change_in_chem=0
-                #print(i)
-                #print(j)
-                #print("#####################################################")
-                if (i[1][3]==j[1][3]):
 
+                if (i[1][3]==j[1][3]):
                     Change_in_chem=float(abs((i[1][2]) + (j[1][2])))/float(2)
                     if ((i[1][2]<0 and j[1][2]<0) or (i[1][2]>0 and j[1][2]>0)):
                         Change_in_chem=Change_in_chem
-
                     else:
                         Change_in_chem=-(Change_in_chem)
-                        #print(i)
-                        #print(j)
-                        #print("#####################################################")
+
                 else:
                     Change_in_chem=float(abs((i[1][2]) + (j[1][2])))/float(2)
                     if ((i[1][2]<0 and j[1][2]<0) or (i[1][2]>0 and j[1][2]>0)):
                         Change_in_chem=-Change_in_chem
                     else:
                          Change_in_chem=Change_in_chem
+
                 try:
                     player_combi[str(str(i[0])+" "+str(j[0]))]=str(float(player_combi[str(str(i[0])+" "+str(j[0]))])+Change_in_chem)
                     #print("UPDATED VALUES",player_combi[str(str(i[0])+" "+str(j[0]))])
                 except:
                     player_combi[str(str(j[0])+" "+str(i[0]))]=str(float(player_combi[str(str(j[0])+" "+str(i[0]))])+Change_in_chem)
                     #print("UPDATED VALUES",player_combi[str(str(j[0])+" "+str(i[0]))])
-
 ##########################################################################################################################################
-
+#Extract details of match from every match rdd
 def extract_details(rdd):
     input_data = json.loads(rdd)
     match_Id = input_data["wyId"]
@@ -581,17 +556,15 @@ def extract_details(rdd):
     
     
     return ((date,label), (out_match))
-
+##########################################################################################################################################
+#Converting match rdd into pair rdd
 def join_details(new,old):
-
     if old is None:
-        #print(new)
-        #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         return (new)
     else:
         return (old)
-
-
+##########################################################################################################################################
+#COunting the number of matches played by each player
 def countmatch(new,old):
     try:
         player_id=new[0][-1]
@@ -605,6 +578,10 @@ def countmatch(new,old):
         return old
 
 
+
+##########################################################################################################################################
+#DEFINING SPARK SESSION
+##########################################################################################################################################
 conf = SparkConf()
 conf.setAppName("FPL")
 sc = SparkContext(conf=conf)
@@ -614,6 +591,8 @@ ssc.checkpoint("Checkpointing_done")
 lines = ssc.socketTextStream("localhost", 6100)
 #lines.pprint()
 
+##########################################################################################################################################
+#Initialising Player Chemistry List
 players_df = sqlContext.read.load("/user/arshgoyal/csv/players.csv", format="csv", header="true", inferSchema="true")
 unique_players=players_df.select('Id').distinct().collect()
 unique_list=[]
@@ -624,22 +603,24 @@ for i in range(len(unique_list)):
     for j in range(i,len(unique_list)):
         if(i!=j):
             player_combi[str(str(unique_list[i])+" "+str(unique_list[j]))]=str(0.5)
+##########################################################################################################################################
 
+##########################################################################################################################################
 print("########################################################Filter By Match##########################################")
 match_data = lines.filter(filter_by_Match)
-#match_data.pprint()
+match_data.pprint()
 
 print("########################################################Filter By Event##########################################")
 event_data = lines.filter(filter_by_Event)
-#event_data.pprint()
+event_data.pprint()
 
 print("########################################################Calculate Events#########################################")
 event_characteristics = event_data.map(calculate_Events)
-#event_characteristics.pprint()
+event_characteristics.pprint()
 
 print("########################################################Cummulative Metrics##########################################")
 metrics = event_characteristics.updateStateByKey(cummulate_Metrics)
-#metrics.pprint(30)
+metrics.pprint(30)
 
 print("########################################################FINAL METRICS##########################################")
 final_metrics = metrics.updateStateByKey(calculate_Metrics)
@@ -647,7 +628,7 @@ final_metrics.pprint()
 
 print("########################################################PLAYER DETAILS##########################################")
 player_details=match_data.flatMap(lambda y: player_list(y))
-#player_details.pprint()
+player_details.pprint()
 
 print("########################################################MATCHES PLAYERS##########################################")
 count_number_mat_played=player_details.updateStateByKey(countmatch)
@@ -659,7 +640,7 @@ player_D.pprint()
 
 print("########################################################PLAYER RATING##########################################")
 player_rate=player_D.updateStateByKey(RateplayerUpdate)
-#player_rate.pprint()
+player_rate.pprint()
 
 print("########################################################PLAYER PROFILE ##########################################")
 playerprofile=final_metrics.updateStateByKey(profileplayerUpdate)
@@ -671,47 +652,56 @@ final_metrics = final_metrics.updateStateByKey(lambda x: None)
 
 print("########################################################CHEMISTRY##########################################")
 player_chem=player_rate.foreachRDD(chem_calculate)
+#player_chem.pprint()
 
 print("########################################################MATCH DETAILS##########################################")
 match_details = match_data.map(extract_details)
-#match_details.pprint()
+match_details.pprint()
 
 print("########################################################ALL MATCHES##########################################")
 all_matches = match_details.updateStateByKey(join_details)
 #all_matches.pprint()
+##########################################################################################################################################
 
 
 
+##########################################################################################################################################
+#Saving Player_Profile to hdfs
 def save_Profile(record):
 	df=record.toDF(['Id','metrics'])
 	df.show()
 	df.coalesce(1).write.json("Player_Profile.json","overwrite")
 
-
+#Saving Player_Rating to hdfs
 def save_Rating(record):
 	df=record.toDF(['Id','ratings'])
 	df.show()
 	df.coalesce(1).write.json("Player_Rating.json","overwrite")
 
+#Saving Match_Details to hdfs
 def save_Matches(record):
 	df=record.toDF(['match_Id','details'])
 	df.show()
 	df.coalesce(1).write.json("Match_details.json","overwrite")
 
+#Saving Count_Matches to hdfs
 def save_Number(rdd):
     df=rdd.toDF(['id','metric'])
     df.show()
     df.coalesce(1).write.json("Count_Matches.json","overwrite")
-
+##########################################################################################################################################
 playerprofile.foreachRDD( lambda rdd: save_Profile(rdd))
 player_rate.foreachRDD (lambda rdd: save_Rating(rdd))
 all_matches.foreachRDD( lambda rdd: save_Matches(rdd))
 count_number_mat_played.foreachRDD(lambda rdd: save_Number(rdd))
+##########################################################################################################################################
 
+##########################################################################################################################################
+#SPARK STREAMING
+##########################################################################################################################################
 
-##SPARK##
 ssc.start()
-ssc.awaitTermination(100)  
+ssc.awaitTermination()  
 ssc.stop()
 with open("/home/arshgoyal/Desktop/BD_Proj/chemistry.json", "w") as outfile:  
-     json.dump(player_combi, outfile) 
+     json.dump(player_combi, outfile)
