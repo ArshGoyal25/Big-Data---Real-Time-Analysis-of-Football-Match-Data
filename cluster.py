@@ -184,4 +184,24 @@ print(final_values)
 # cluster_3.show()
 # cluster_4.show()
 # cluster_5.show()
+"""
 
+assembler1 = new VectorAssembler().setInputCols(Array( "age","age squared")).setOutputCol("features").transform(df)
+assembler1.show()
+ normalizer = new Normalizer()
+  .setInputCol("features")
+  .setOutputCol("normFeatures")
+  .setP(2.0)
+  .transform(assembler1)
+
+
+lr = new LinearRegression()
+  .setLabelCol("jprp")
+  .setFeaturesCol("normFeatures")
+  .setMaxIter(10)
+  .setRegParam(1.0)
+  .setElasticNetParam(1.0)
+
+lrModel = lr.fit(trainingData)
+
+"""
